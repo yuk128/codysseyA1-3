@@ -10,7 +10,8 @@ POST /api/comment
 import os
 import json
 from http.server import BaseHTTPRequestHandler
-from anthropic import Anthropic
+from google import genai
+from google.genai import types
 
 MAX_INPUT_LEN = 500
 SYSTEM_PROMPT = (
@@ -21,7 +22,7 @@ SYSTEM_PROMPT = (
     "댓글 텍스트만 출력하고 따옴표나 접두사는 붙이지 마."
 )
 
-client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
 
 
 class handler(BaseHTTPRequestHandler):
@@ -45,15 +46,15 @@ class handler(BaseHTTPRequestHandler):
         content = content[:MAX_INPUT_LEN]
 
         try:
-            message = client.messages.create(
-                model="claude-sonnet-4-6",
-                max_tokens=150,
-                system=SYSTEM_PROMPT,
-                messages=[{"role": "user", "content": content}],
+            response = client.models.generate_content(
+                model="gemini-2.5-flash-lite",
+                contents=content,
+                config=types.GenerateContentConfig(
+                    system_instruction=SYSTEM_PROMPT,
+                    max_output_tokens=150,
+                ),
             )
-            reply = "".join(
-                block.text for block in message.content if block.type == "text"
-            ).strip()
+            reply = (response.text or "").strip()
 
             if not reply:
                 raise ValueError("empty completion")
